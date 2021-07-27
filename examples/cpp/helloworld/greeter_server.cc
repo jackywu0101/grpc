@@ -28,12 +28,14 @@
 #include "examples/protos/helloworld.grpc.pb.h"
 #else
 #include "helloworld.grpc.pb.h"
+#include "google/rpc/status.grpc.pb.h"
 #endif
 
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
+using grpc::StatusCode;
 using helloworld::Greeter;
 using helloworld::HelloReply;
 using helloworld::HelloRequest;
@@ -42,8 +44,18 @@ using helloworld::HelloRequest;
 class GreeterServiceImpl final : public Greeter::Service {
   Status SayHello(ServerContext* context, const HelloRequest* request,
                   HelloReply* reply) override {
-    std::string prefix("Hello ");
-    reply->set_message(prefix + request->name());
+    std::string name(request->name());
+    if (name.compare("japan") == 0) {
+      helloworld::MvmError mvmErr;
+      mvmErr.set_msg("cannot greet japan");
+      mvmErr.set_libmvm_error(1234);
+      google::rpc::Status st;
+      st.set_code(StatusCode::INTERNAL);
+      st.set_message("error from cpp");
+      st.add_details()->PackFrom(mvmErr);
+      return Status(StatusCode::INTERNAL, "", st.SerializeAsString());
+    }
+    reply->set_message("Hey, " + name + "!");
     return Status::OK;
   }
 };
